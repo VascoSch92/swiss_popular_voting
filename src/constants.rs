@@ -1,0 +1,11 @@
+pub const TOTALE_ELETTORI: &str = "Totale elettori";
+pub const SVIZZERI_ALL_ESTERO: &str = "di cui Svizzeri all'estero";
+pub const BOLLETTINI_RIENTRATI: &str = "Bollettini rientrati";
+pub const PARTECIPAZIONE: &str = "Partecipazione";
+pub const BIANCHE: &str = "bianche";
+pub const NULLE: &str = "nulle";
+pub const SCHEDE_DI_VOTO_VALIDE: &str = "Schede di voto valide";
+pub const SI: &str = "Sì";
+pub const NO: &str = "No";
+pub const VOTO_DEI_CANTONI_SI: &str = "Voto dei Cantoni sì";
+pub const VOTO_DEI_CANTONI_NO: &str = "Voto dei Cantoni no";
