@@ -4,6 +4,7 @@ use scraper::Html;
 use crate::constants::{
     BIANCHE, BOLLETTINI_RIENTRATI, NO, NULLE, PARTECIPAZIONE, SCHEDE_DI_VOTO_VALIDE, SI,
     SVIZZERI_ALL_ESTERO, TOTALE_ELETTORI, VOTO_DEI_CANTONI_NO, VOTO_DEI_CANTONI_SI,
+    URL_SUMMARY_PAGE_IT
 };
 use crate::converters::{
     convert_date_to_us_format, integer_and_fraction_to_f32, ratio_to_f32, string_to_u32,
@@ -19,9 +20,7 @@ pub fn extract_parsed_html_from(url: &String) -> Html {
 }
 
 pub fn extract_information_from_summary_page() -> Vec<(String, String, String, String)> {
-    let document = extract_parsed_html_from(
-        &"https://www.bk.admin.ch/ch/i/pore/va/vab_2_2_4_1_gesamt.html".to_string(),
-    );
+    let document = extract_parsed_html_from(&URL_SUMMARY_PAGE_IT.to_string());
 
     let row_selector = scraper::Selector::parse("tr").unwrap();
     let link_selector = scraper::Selector::parse("a").unwrap();
@@ -73,6 +72,20 @@ pub fn extract_number_votation_from_url(voting_hyperlink: &String) -> Option<u32
         }
     }
     None
+}
+
+pub fn extract_typology_of_the_voting(title: String) -> String {
+    if title.contains("Iniziativa") {
+        "initiative".to_string()
+    } else if title.contains("Decreto") {
+        "decree".to_string()
+    } else if title.contains("Legge"){
+        "referendum".to_string()
+    } else if title.contains("Controprogetto") {
+        "counterproposal".to_string()
+    } else {
+        "".to_string()
+    }
 }
 
 pub fn extract_date_of_voting_from_url(url: &str) -> Option<String> {

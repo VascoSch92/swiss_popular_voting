@@ -8,6 +8,7 @@ use reqwest;
 use extractors::{
     extract_data_from_table, extract_information_from_summary_page,
     extract_number_votation_from_url, extract_parsed_html_from,
+    extract_typology_of_the_voting,
 };
 use tools::{Data, Row};
 
@@ -32,7 +33,8 @@ fn main() {
 
         row.no = extract_number_votation_from_url(&url);
         row.date_of_voting = date_of_voting;
-        row.title = title;
+        row.title = title.clone();
+        row.typology = extract_typology_of_the_voting(title);
         row.outcome = match outcome.as_str() {
             "L'oggetto è stato accettato" => Some("accepted".to_string()),
             "L'oggetto è stato respinto" => Some("not accepted".to_string()),
@@ -52,6 +54,7 @@ fn create_dataframe_from(data: Data) -> DataFrame {
         "no" => data.no,
         "date_of_voting" => data.date_of_voting,
         "title" => data.title,
+        "typology" => data.typology,
         "total_voters" => data.total_voters,
         "domestic_voters" => data.domestic_voters,
         "overseas_voters" => data.overseas_voters,
