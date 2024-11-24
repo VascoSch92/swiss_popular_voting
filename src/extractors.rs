@@ -11,7 +11,6 @@ use crate::constants::{
     URL_SUMMARY_PAGE_FR, URL_SUMMARY_PAGE_IT, VALID_VOTING_BALLOTS,
 };
 use crate::converters::{convert_date_to_us_format, string_to_u32};
-use crate::Row;
 
 pub fn extract_parsed_html_from(url: &String) -> Html {
     let response = reqwest::blocking::get(url.clone());
