@@ -1,0 +1,20 @@
+# Swiss Populat Voting
+
+Code to create the dataset `Swiss Popular Voting`.
+
+## About the dataset
+
+For more information about the dataset see the relative page on Kaggle [here](link).
+
+## How to re-create the dataset ?
+
+If you would like to create the dataset locally, just install rust and run the command
+
+```text
+  RUST_LOG=info cargo run
+```
+in the working directory of the project.
+
+## What if I find an error?
+
+If you find an error in the dataset or/and you have suggestion how to make it better: please contact me :-)
