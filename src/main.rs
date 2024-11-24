@@ -6,9 +6,9 @@ use polars::prelude::*;
 use reqwest;
 
 use constants::{
-    BALLOTS_RETURNED, BLANK_VOTING_BALLOTS, CANTONS_VOTING_NO, CANTONS_VOTING_YES,
-    INVALID_VOTING_BALLOTS, OVERSEAS_VOTERS, PARTICIPATION, RATIO_NO, RATIO_YES, TOTAL_NO,
-    TOTAL_VOTERS, TOTAL_YES, VALID_VOTING_BALLOTS,
+    BALLOTS_RETURNED, BLANK_VOTING_BALLOTS, CANTONS_VOTING_NO, CANTONS_VOTING_YES, DATE_OF_VOTING,
+    INVALID_VOTING_BALLOTS, OUTCOME, OVERSEAS_VOTERS, PARTICIPATION, RATIO_NO, RATIO_YES, TITLE_DE,
+    TITLE_FR, TITLE_IT, TOTAL_NO, TOTAL_VOTERS, TOTAL_YES, VALID_VOTING_BALLOTS,
 };
 use converters::string_to_u32;
 use converters::{integer_and_fraction_to_f32, ratio_to_f32};
@@ -29,26 +29,35 @@ fn main() {
 
     let mut data: Data = Data::default();
     let mut spinning_circle = progress::SpinningCircle::new();
-    for (idx, (url, date_of_voting, title, outcome)) in results.clone().into_iter().enumerate() {
+
+    let number_of_results = results.get("url").unwrap().len();
+    for idx in 0..number_of_results {
         spinning_circle.set_job_title(
-            format!("Parsing page: {} ({} of {})", url, idx, results.len(),).as_str(),
+            format!(
+                "Parsing page: {} ({} of {})",
+                results.get("url").unwrap()[idx],
+                idx,
+                number_of_results
+            )
+            .as_str(),
         );
 
-        let document = extract_parsed_html_from(&url);
+        let document = extract_parsed_html_from(&results.get("url").unwrap()[idx]);
 
         let mut row: Row = Row::default();
 
-        row.no = extract_number_votation_from_url(&url);
-        row.date_of_voting = date_of_voting;
-        row.title = title.clone();
-        row.typology = extract_typology_of_the_voting(title);
-        row.outcome = extract_outcome(outcome);
+        row.no = extract_number_votation_from_url(&results.get("url").unwrap()[idx]);
+        row.date_of_voting = results.get(DATE_OF_VOTING).unwrap()[idx].clone();
+        row.title_it = results.get(TITLE_IT).unwrap()[idx].clone();
+        row.title_fr = results.get(TITLE_FR).unwrap()[idx].clone();
+        row.title_de = results.get(TITLE_DE).unwrap()[idx].clone();
+        row.typology = extract_typology_of_the_voting(results.get(TITLE_IT).unwrap()[idx].clone());
+        row.outcome = extract_outcome(results.get(OUTCOME).unwrap()[idx].clone());
 
         let table_data = extract_data_from_table(document);
         row.total_voters = string_to_u32(table_data.get(TOTAL_VOTERS));
         row.overseas_voters = string_to_u32(table_data.get(OVERSEAS_VOTERS));
-        row.domestic_voters =
-            extract_domestic_voters(row.total_voters.clone(), row.overseas_voters.clone());
+        row.domestic_voters = extract_domestic_voters(row.total_voters, row.overseas_voters);
         row.ballots_returned = string_to_u32(table_data.get(BALLOTS_RETURNED));
         row.participation = ratio_to_f32(table_data.get(PARTICIPATION));
         row.blank_voting_ballots = string_to_u32(table_data.get(BLANK_VOTING_BALLOTS));
@@ -71,8 +80,10 @@ fn main() {
 fn create_dataframe_from(data: Data) -> DataFrame {
     let df: DataFrame = df!(
         "no" => data.no,
-        "date_of_voting" => data.date_of_voting,
-        "title" => data.title,
+        DATE_OF_VOTING => data.date_of_voting,
+        TITLE_IT => data.title_it,
+        TITLE_FR => data.title_fr,
+        TITLE_DE => data.title_de,
         "typology" => data.typology,
         TOTAL_VOTERS => data.total_voters,
         "domestic_voters" => data.domestic_voters,
@@ -88,7 +99,7 @@ fn create_dataframe_from(data: Data) -> DataFrame {
         RATIO_NO => data.ratio_no,
         CANTONS_VOTING_YES => data.cantons_voting_yes,
         CANTONS_VOTING_NO => data.cantons_voting_no,
-        "outcome" => data.outcome,
+        OUTCOME => data.outcome,
     )
     .unwrap();
 
@@ -105,7 +116,7 @@ fn save_as_csv(df: &mut DataFrame) {
     // Save the DataFrame to a CSV file
     let mut file = File::create("data.csv").expect("could not create file");
 
-    _ = CsvWriter::new(&mut file)
+    CsvWriter::new(&mut file)
         .include_header(true)
         .with_separator(b',')
         .finish(df)

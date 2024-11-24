@@ -1,8 +1,12 @@
+use polars::export::chrono::TimeDelta;
+
 #[derive(Default, Debug)]
 pub struct Row {
     pub no: Option<u32>,
     pub date_of_voting: String,
-    pub title: String,
+    pub title_it: String,
+    pub title_fr: String,
+    pub title_de: String,
     pub typology: String,
     pub total_voters: Option<u32>,
     pub domestic_voters: Option<u32>,
@@ -25,7 +29,9 @@ pub struct Row {
 pub struct Data {
     pub no: Vec<Option<u32>>,
     pub date_of_voting: Vec<String>,
-    pub title: Vec<String>,
+    pub title_it: Vec<String>,
+    pub title_fr: Vec<String>,
+    pub title_de: Vec<String>,
     pub typology: Vec<String>,
     pub total_voters: Vec<Option<u32>>,
     pub domestic_voters: Vec<Option<u32>>,
@@ -48,7 +54,9 @@ impl Data {
     pub fn update(&mut self, row: Row) {
         self.no.push(row.no);
         self.date_of_voting.push(row.date_of_voting);
-        self.title.push(row.title);
+        self.title_it.push(row.title_it);
+        self.title_fr.push(row.title_fr);
+        self.title_de.push(row.title_de);
         self.typology.push(row.typology);
         self.total_voters.push(row.total_voters);
         self.domestic_voters.push(row.domestic_voters);

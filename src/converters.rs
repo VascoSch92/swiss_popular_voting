@@ -1,7 +1,7 @@
 pub fn string_to_u32(candidate: Option<&String>) -> Option<u32> {
     match candidate.is_none() {
-        true=> None,
-        false=> {
+        true => None,
+        false => {
             let candidate_clean = candidate.unwrap().replace("'", "").parse::<u32>();
             match candidate_clean {
                 Ok(value) => Some(value),
@@ -9,7 +9,6 @@ pub fn string_to_u32(candidate: Option<&String>) -> Option<u32> {
             }
         }
     }
-
 }
 
 pub fn string_to_f32(candidate: String) -> Option<f32> {
@@ -38,7 +37,7 @@ pub fn ratio_to_f32(candidate: Option<&String>) -> Option<f32> {
 }
 
 pub fn integer_and_fraction_to_f32(candidate: Option<&String>) -> Option<f32> {
-    if candidate.is_none(){
+    if candidate.is_none() {
         return None;
     }
     // Split the input into integer and fraction parts

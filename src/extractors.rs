@@ -5,9 +5,10 @@ use regex::Regex;
 use scraper::Html;
 
 use crate::constants::{
-    BALLOTS_RETURNED, BLANK_VOTING_BALLOTS, CANTONS_VOTING_NO, CANTONS_VOTING_YES,
-    INVALID_VOTING_BALLOTS, OVERSEAS_VOTERS, PARTICIPATION, RATIO_NO, RATIO_YES, TOTAL_NO,
-    TOTAL_VOTERS, TOTAL_YES, URL_SUMMARY_PAGE_IT, VALID_VOTING_BALLOTS,
+    BALLOTS_RETURNED, BLANK_VOTING_BALLOTS, CANTONS_VOTING_NO, CANTONS_VOTING_YES, DATE_OF_VOTING,
+    INVALID_VOTING_BALLOTS, OUTCOME, OVERSEAS_VOTERS, PARTICIPATION, RATIO_NO, RATIO_YES, TITLE_DE,
+    TITLE_FR, TITLE_IT, TOTAL_NO, TOTAL_VOTERS, TOTAL_YES, URL_SUMMARY_PAGE_DE,
+    URL_SUMMARY_PAGE_FR, URL_SUMMARY_PAGE_IT, VALID_VOTING_BALLOTS,
 };
 use crate::converters::{convert_date_to_us_format, string_to_u32};
 use crate::Row;
@@ -20,14 +21,22 @@ pub fn extract_parsed_html_from(url: &String) -> Html {
     document
 }
 
-pub fn extract_information_from_summary_page() -> Vec<(String, String, String, String)> {
+pub fn extract_information_from_summary_page() -> HashMap<&'static str, Vec<String>> {
     let document = extract_parsed_html_from(&URL_SUMMARY_PAGE_IT.to_string());
 
     let row_selector = scraper::Selector::parse("tr").unwrap();
     let link_selector = scraper::Selector::parse("a").unwrap();
 
     // Store results in a vector of tuples
-    let mut results: Vec<(String, String, String, String)> = Vec::new();
+    let mut data: HashMap<&str, Vec<String>> = HashMap::from([
+        ("url", Vec::new()),
+        (DATE_OF_VOTING, Vec::new()),
+        (OUTCOME, Vec::new()),
+    ]);
+
+    data.insert(TITLE_IT, extract_title(URL_SUMMARY_PAGE_IT));
+    data.insert(TITLE_DE, extract_title(URL_SUMMARY_PAGE_DE));
+    data.insert(TITLE_FR, extract_title(URL_SUMMARY_PAGE_FR));
 
     // Iterate over rows (skip the first row, which is the header)
     for row in document.select(&row_selector).skip(1) {
@@ -35,7 +44,7 @@ pub fn extract_information_from_summary_page() -> Vec<(String, String, String, S
 
         // Extract values if the structure matches
         if columns.len() >= 2 {
-            let url = format!(
+            data.get_mut("url").unwrap().push(format!(
                 "{}{}",
                 "https://www.bk.admin.ch/ch/i/pore/va/",
                 columns[1]
@@ -43,10 +52,10 @@ pub fn extract_information_from_summary_page() -> Vec<(String, String, String, S
                     .attr("href")
                     .unwrap_or_default()
                     .to_string()
+            ));
+            data.get_mut(DATE_OF_VOTING).unwrap().push(
+                convert_date_to_us_format(columns[0].text().collect::<String>().trim()).unwrap(),
             );
-            let date =
-                convert_date_to_us_format(columns[0].text().collect::<String>().trim()).unwrap();
-            let title = columns[1].text().collect::<String>().trim().to_string();
 
             let mut esito = String::new();
             for element in row.text().collect::<Vec<_>>() {
@@ -55,11 +64,26 @@ pub fn extract_information_from_summary_page() -> Vec<(String, String, String, S
                     break;
                 }
             }
-
-            results.push((url, date, title, esito));
+            data.get_mut(OUTCOME).unwrap().push(esito);
         }
     }
-    results
+    data
+}
+
+fn extract_title(url: &str) -> Vec<String> {
+    let document = extract_parsed_html_from(&url.to_string());
+
+    let row_selector = scraper::Selector::parse("tr").unwrap();
+    let link_selector = scraper::Selector::parse("a").unwrap();
+
+    let mut titles: Vec<String> = Vec::new();
+    for row in document.select(&row_selector).skip(1) {
+        let columns: Vec<_> = row.select(&link_selector).collect();
+        if columns.len() >= 2 {
+            titles.push(columns[1].text().collect::<String>().trim().to_string());
+        }
+    }
+    titles
 }
 
 pub fn extract_number_votation_from_url(voting_hyperlink: &String) -> Option<u32> {

@@ -5,6 +5,12 @@ pub const URL_SUMMARY_PAGE_DE: &str =
 pub const URL_SUMMARY_PAGE_FR: &str =
     "https://www.bk.admin.ch/ch/f/pore/va/vab_2_2_4_1_gesamt.html";
 
+pub const TITLE_IT: &str = "title_it";
+pub const TITLE_FR: &str = "title_fr";
+pub const TITLE_DE: &str = "title_de";
+
+pub const DATE_OF_VOTING: &str = "date_of_voting";
+pub const OUTCOME: &str = "outcome";
 pub const TOTAL_VOTERS: &str = "total_voters";
 pub const OVERSEAS_VOTERS: &str = "overseas_voters";
 pub const BALLOTS_RETURNED: &str = "ballots_returned";
