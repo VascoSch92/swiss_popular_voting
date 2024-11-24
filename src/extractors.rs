@@ -1,14 +1,15 @@
+use collections::HashMap;
+use std::collections;
+
 use regex::Regex;
 use scraper::Html;
 
 use crate::constants::{
-    BIANCHE, BOLLETTINI_RIENTRATI, NO, NULLE, PARTECIPAZIONE, SCHEDE_DI_VOTO_VALIDE, SI,
-    SVIZZERI_ALL_ESTERO, TOTALE_ELETTORI, VOTO_DEI_CANTONI_NO, VOTO_DEI_CANTONI_SI,
-    URL_SUMMARY_PAGE_IT
+    BALLOTS_RETURNED, BLANK_VOTING_BALLOTS, CANTONS_VOTING_NO, CANTONS_VOTING_YES,
+    INVALID_VOTING_BALLOTS, OVERSEAS_VOTERS, PARTICIPATION, RATIO_NO, RATIO_YES, TOTAL_NO,
+    TOTAL_VOTERS, TOTAL_YES, URL_SUMMARY_PAGE_IT, VALID_VOTING_BALLOTS,
 };
-use crate::converters::{
-    convert_date_to_us_format, integer_and_fraction_to_f32, ratio_to_f32, string_to_u32,
-};
+use crate::converters::{convert_date_to_us_format, string_to_u32};
 use crate::Row;
 
 pub fn extract_parsed_html_from(url: &String) -> Html {
@@ -68,7 +69,7 @@ pub fn extract_number_votation_from_url(voting_hyperlink: &String) -> Option<u32
     // Check if the regex matches and extract the number
     if let Some(captures) = re.captures(voting_hyperlink.as_str()) {
         if let Some(number) = captures.get(1) {
-            return string_to_u32(number.as_str().to_string());
+            return string_to_u32(Some(&number.as_str().to_string()));
         }
     }
     None
@@ -79,12 +80,20 @@ pub fn extract_typology_of_the_voting(title: String) -> String {
         "initiative".to_string()
     } else if title.contains("Decreto") {
         "decree".to_string()
-    } else if title.contains("Legge"){
+    } else if title.contains("Legge") {
         "referendum".to_string()
     } else if title.contains("Controprogetto") {
         "counterproposal".to_string()
     } else {
         "".to_string()
+    }
+}
+
+pub fn extract_outcome(outcome: String) -> Option<String> {
+    match outcome.as_str() {
+        "L'oggetto è stato accettato" => Some("accepted".to_string()),
+        "L'oggetto è stato respinto" => Some("not accepted".to_string()),
+        _ => None,
     }
 }
 
@@ -103,7 +112,7 @@ pub fn extract_date_of_voting_from_url(url: &str) -> Option<String> {
     None
 }
 
-pub fn extract_data_from_table(document: Html, row: &mut Row) {
+pub fn extract_data_from_table(document: Html) -> HashMap<&'static str, String> {
     // Selector for all td elements
     let td_selector = scraper::Selector::parse("td").unwrap();
 
@@ -123,72 +132,72 @@ pub fn extract_data_from_table(document: Html, row: &mut Row) {
     }
 
     let mut position: usize = 0;
+    let mut data: HashMap<&str, String> = HashMap::new();
     while position < table_elements.len() {
         match table_elements[position].as_str() {
-            TOTALE_ELETTORI => {
+            "Totale elettori" => {
                 position += 1;
-                row.total_voters = Some(
-                    table_elements[position]
-                        .replace("'", "")
-                        .parse::<u32>()
-                        .unwrap(),
-                );
+                data.insert(TOTAL_VOTERS, table_elements[position].clone());
             }
-            SVIZZERI_ALL_ESTERO => {
+            "di cui Svizzeri all'estero" => {
                 position += 1;
-                row.overseas_voters = Some(
-                    table_elements[position]
-                        .replace("'", "")
-                        .parse::<u32>()
-                        .unwrap(),
-                );
+                data.insert(OVERSEAS_VOTERS, table_elements[position].clone());
             }
-            BOLLETTINI_RIENTRATI => {
+            "Bollettini rientrati" => {
                 position += 1;
-                row.ballots_returned = string_to_u32(table_elements[position].clone());
+                data.insert(BALLOTS_RETURNED, table_elements[position].clone());
             }
-            PARTECIPAZIONE => {
+            "Partecipazione" => {
                 position += 1;
-                row.participation = ratio_to_f32(table_elements[position].clone());
+                data.insert(PARTICIPATION, table_elements[position].clone());
             }
-            BIANCHE => {
+            "bianche" => {
                 position += 1;
-                row.blank_voting_ballots = string_to_u32(table_elements[position].clone());
+                data.insert(BLANK_VOTING_BALLOTS, table_elements[position].clone());
             }
-            NULLE => {
+            "nulle" => {
                 position += 1;
-                row.invalid_voting_ballots = string_to_u32(table_elements[position].clone());
+                data.insert(INVALID_VOTING_BALLOTS, table_elements[position].clone());
             }
-            SCHEDE_DI_VOTO_VALIDE => {
+            "Schede di voto valide" => {
                 position += 1;
-                row.valid_voting_ballots = string_to_u32(table_elements[position].clone());
+                data.insert(VALID_VOTING_BALLOTS, table_elements[position].clone());
             }
-            SI => {
+            "Sì" => {
                 position += 1;
-                row.total_yes = string_to_u32(table_elements[position].clone());
+                data.insert(TOTAL_YES, table_elements[position].clone());
 
                 position += 1;
-                row.ratio_yes = ratio_to_f32(table_elements[position].clone());
+                data.insert(RATIO_YES, table_elements[position].clone());
             }
-            NO => {
+            "No" => {
                 position += 1;
-                row.total_no = string_to_u32(table_elements[position].clone());
+                data.insert(TOTAL_NO, table_elements[position].clone());
 
                 position += 1;
-                row.ratio_no = ratio_to_f32(table_elements[position].clone());
+                data.insert(RATIO_NO, table_elements[position].clone());
             }
-            VOTO_DEI_CANTONI_SI => {
+            "Voto dei Cantoni sì" => {
                 position += 1;
-                row.cantons_voting_yes =
-                    integer_and_fraction_to_f32(table_elements[position].clone());
+                data.insert(CANTONS_VOTING_YES, table_elements[position].clone());
             }
-            VOTO_DEI_CANTONI_NO => {
+            "Voto dei Cantoni no" => {
                 position += 1;
-                row.cantons_voting_no =
-                    integer_and_fraction_to_f32(table_elements[position].clone());
+                data.insert(CANTONS_VOTING_NO, table_elements[position].clone());
             }
             _ => {}
         }
         position += 1;
     }
+    data
+}
+
+pub fn extract_domestic_voters(
+    total_voters: Option<u32>,
+    overseas_voters: Option<u32>,
+) -> Option<u32> {
+    if !total_voters.is_none() && !overseas_voters.is_none() {
+        return Some(total_voters.unwrap() + overseas_voters.unwrap());
+    }
+    None
 }

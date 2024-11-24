@@ -5,9 +5,16 @@ use std::string::ToString;
 use polars::prelude::*;
 use reqwest;
 
+use constants::{
+    BALLOTS_RETURNED, BLANK_VOTING_BALLOTS, CANTONS_VOTING_NO, CANTONS_VOTING_YES,
+    INVALID_VOTING_BALLOTS, OVERSEAS_VOTERS, PARTICIPATION, RATIO_NO, RATIO_YES, TOTAL_NO,
+    TOTAL_VOTERS, TOTAL_YES, VALID_VOTING_BALLOTS,
+};
+use converters::string_to_u32;
+use converters::{integer_and_fraction_to_f32, ratio_to_f32};
 use extractors::{
-    extract_data_from_table, extract_information_from_summary_page,
-    extract_number_votation_from_url, extract_parsed_html_from,
+    extract_data_from_table, extract_domestic_voters, extract_information_from_summary_page,
+    extract_number_votation_from_url, extract_outcome, extract_parsed_html_from,
     extract_typology_of_the_voting,
 };
 use tools::{Data, Row};
@@ -35,12 +42,24 @@ fn main() {
         row.date_of_voting = date_of_voting;
         row.title = title.clone();
         row.typology = extract_typology_of_the_voting(title);
-        row.outcome = match outcome.as_str() {
-            "L'oggetto è stato accettato" => Some("accepted".to_string()),
-            "L'oggetto è stato respinto" => Some("not accepted".to_string()),
-            _ => None,
-        };
-        extract_data_from_table(document, &mut row);
+        row.outcome = extract_outcome(outcome);
+
+        let table_data = extract_data_from_table(document);
+        row.total_voters = string_to_u32(table_data.get(TOTAL_VOTERS));
+        row.overseas_voters = string_to_u32(table_data.get(OVERSEAS_VOTERS));
+        row.domestic_voters =
+            extract_domestic_voters(row.total_voters.clone(), row.overseas_voters.clone());
+        row.ballots_returned = string_to_u32(table_data.get(BALLOTS_RETURNED));
+        row.participation = ratio_to_f32(table_data.get(PARTICIPATION));
+        row.blank_voting_ballots = string_to_u32(table_data.get(BLANK_VOTING_BALLOTS));
+        row.invalid_voting_ballots = string_to_u32(table_data.get(INVALID_VOTING_BALLOTS));
+        row.valid_voting_ballots = string_to_u32(table_data.get(VALID_VOTING_BALLOTS));
+        row.total_yes = string_to_u32(table_data.get(TOTAL_YES));
+        row.ratio_yes = ratio_to_f32(table_data.get(RATIO_YES));
+        row.total_no = string_to_u32(table_data.get(TOTAL_NO));
+        row.ratio_no = ratio_to_f32(table_data.get(RATIO_NO));
+        row.cantons_voting_yes = integer_and_fraction_to_f32(table_data.get(CANTONS_VOTING_YES));
+        row.cantons_voting_yes = integer_and_fraction_to_f32(table_data.get(CANTONS_VOTING_NO));
 
         data.update(row);
     }
@@ -55,20 +74,20 @@ fn create_dataframe_from(data: Data) -> DataFrame {
         "date_of_voting" => data.date_of_voting,
         "title" => data.title,
         "typology" => data.typology,
-        "total_voters" => data.total_voters,
+        TOTAL_VOTERS => data.total_voters,
         "domestic_voters" => data.domestic_voters,
-        "overseas_voters" => data.overseas_voters,
-        "ballots_returned" => data.ballots_returned,
-        "participation" => data.participation,
-        "invalid_voting_ballots" => data.invalid_voting_ballots,
-        "blank_voting_ballots" => data.blank_voting_ballots,
-        "valid_voting_ballots" => data.valid_voting_ballots,
-        "total_yes" => data.total_yes,
-        "ratio_yes" => data.ratio_yes,
-        "total_no" => data.total_no,
-        "ratio_no" => data.ratio_no,
-        "cantons_voting_yes" => data.cantons_voting_yes,
-        "cantons_voting_no" => data.cantons_voting_no,
+        OVERSEAS_VOTERS => data.overseas_voters,
+        BALLOTS_RETURNED => data.ballots_returned,
+        PARTICIPATION => data.participation,
+        INVALID_VOTING_BALLOTS => data.invalid_voting_ballots,
+        BLANK_VOTING_BALLOTS => data.blank_voting_ballots,
+        VALID_VOTING_BALLOTS => data.valid_voting_ballots,
+        TOTAL_YES => data.total_yes,
+        RATIO_YES => data.ratio_yes,
+        TOTAL_NO => data.total_no,
+        RATIO_NO => data.ratio_no,
+        CANTONS_VOTING_YES => data.cantons_voting_yes,
+        CANTONS_VOTING_NO => data.cantons_voting_no,
         "outcome" => data.outcome,
     )
     .unwrap();

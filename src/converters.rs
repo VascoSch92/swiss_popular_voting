@@ -1,9 +1,15 @@
-pub fn string_to_u32(candidate: String) -> Option<u32> {
-    let cleaned_str = candidate.replace("'", "").parse::<u32>();
-    match cleaned_str {
-        Ok(value) => Some(value),
-        Err(_) => None,
+pub fn string_to_u32(candidate: Option<&String>) -> Option<u32> {
+    match candidate.is_none() {
+        true=> None,
+        false=> {
+            let candidate_clean = candidate.unwrap().replace("'", "").parse::<u32>();
+            match candidate_clean {
+                Ok(value) => Some(value),
+                Err(_) => None,
+            }
+        }
     }
+
 }
 
 pub fn string_to_f32(candidate: String) -> Option<f32> {
@@ -14,22 +20,29 @@ pub fn string_to_f32(candidate: String) -> Option<f32> {
     }
 }
 
-pub fn ratio_to_f32(candidate: String) -> Option<f32> {
-    // Remove the '%' character
-    let cleaned_str = candidate.trim_end_matches('%');
-    // Parse the cleaned string into a f32
-    match cleaned_str.parse::<f32>() {
-        Ok(value) => {
-            let decimal = value / 100.0; // Convert percentage to decimal
-            Some(decimal)
+pub fn ratio_to_f32(candidate: Option<&String>) -> Option<f32> {
+    match candidate.is_none() {
+        true => None,
+        false => {
+            let cleaned_str = candidate.unwrap().trim_end_matches('%');
+            // Parse the cleaned string into a f32
+            match cleaned_str.parse::<f32>() {
+                Ok(value) => {
+                    let decimal = value / 100.0; // Convert percentage to decimal
+                    Some(decimal)
+                }
+                Err(_) => None,
+            }
         }
-        Err(_) => None,
     }
 }
 
-pub fn integer_and_fraction_to_f32(candidate: String) -> Option<f32> {
+pub fn integer_and_fraction_to_f32(candidate: Option<&String>) -> Option<f32> {
+    if candidate.is_none(){
+        return None;
+    }
     // Split the input into integer and fraction parts
-    let parts: Vec<&str> = candidate.split_whitespace().collect();
+    let parts: Vec<&str> = candidate.unwrap().split_whitespace().collect();
 
     match parts.len() {
         0 => None,
