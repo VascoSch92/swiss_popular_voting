@@ -4,7 +4,7 @@ Code to create the dataset `Swiss Popular Voting`.
 
 ## About the dataset
 
-For more information about the dataset see the relative page on Kaggle [here](link).
+For more information about the dataset see the relative page on Kaggle [here](https://www.kaggle.com/datasets/vascos/swiss-popular-voting/data).
 
 ## How to re-create the dataset ?
 
