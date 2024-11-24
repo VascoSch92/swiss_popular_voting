@@ -48,9 +48,9 @@ pub fn integer_and_fraction_to_f32(candidate: Option<&String>) -> Option<f32> {
         1 => {
             let value = parts[0];
             if value.contains('/') {
-                return string_to_f32(value.to_string());
+                return string_to_f32(value.to_string())
             }
-            return string_to_f32(value.to_string());
+            return string_to_f32(value.to_string())
         }
         2 => {
             // Parse the integer part

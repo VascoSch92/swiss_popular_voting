@@ -10,17 +10,72 @@ use crate::constants::{
     TITLE_FR, TITLE_IT, TOTAL_NO, TOTAL_VOTERS, TOTAL_YES, URL_SUMMARY_PAGE_DE,
     URL_SUMMARY_PAGE_FR, URL_SUMMARY_PAGE_IT, VALID_VOTING_BALLOTS,
 };
-use crate::converters::{convert_date_to_us_format, string_to_u32};
+use crate::converters::{
+    convert_date_to_us_format, integer_and_fraction_to_f32, ratio_to_f32, string_to_u32,
+};
+use crate::data::{Data, Row};
 
-pub fn extract_parsed_html_from(url: &String) -> Html {
+pub fn execute_extractions_of_data() -> Data {
+    let results = extract_information_from_summary_page();
+
+    let mut data: Data = Data::default();
+    let mut spinning_circle = progress::SpinningCircle::new();
+
+    let number_of_results = results.get("url").unwrap().len();
+    for idx in 0..number_of_results {
+        spinning_circle.set_job_title(
+            format!(
+                "Parsing page: {} ({} of {})",
+                results.get("url").unwrap()[idx],
+                idx,
+                number_of_results
+            )
+            .as_str(),
+        );
+
+        let document = extract_parsed_html_from(&results.get("url").unwrap()[idx]);
+
+        let mut row: Row = Row::default();
+
+        row.no = extract_number_votation_from_url(&results.get("url").unwrap()[idx]);
+        row.date_of_voting = results.get(DATE_OF_VOTING).unwrap()[idx].clone();
+        row.title_it = results.get(TITLE_IT).unwrap()[idx].clone();
+        row.title_fr = results.get(TITLE_FR).unwrap()[idx].clone();
+        row.title_de = results.get(TITLE_DE).unwrap()[idx].clone();
+        row.kind = extract_typology_of_the_voting(results.get(TITLE_IT).unwrap()[idx].clone());
+        row.outcome = extract_outcome(results.get(OUTCOME).unwrap()[idx].clone());
+
+        let table_data = extract_data_from_table(document.clone());
+        row.recommendation = extract_recommendation(table_data.get("supplementary_information"));
+        row.total_voters = string_to_u32(table_data.get(TOTAL_VOTERS));
+        row.overseas_voters = string_to_u32(table_data.get(OVERSEAS_VOTERS));
+        row.domestic_voters = extract_domestic_voters(row.total_voters, row.overseas_voters);
+        row.ballots_returned = string_to_u32(table_data.get(BALLOTS_RETURNED));
+        row.participation = ratio_to_f32(table_data.get(PARTICIPATION));
+        row.blank_voting_ballots = string_to_u32(table_data.get(BLANK_VOTING_BALLOTS));
+        row.invalid_voting_ballots = string_to_u32(table_data.get(INVALID_VOTING_BALLOTS));
+        row.valid_voting_ballots = string_to_u32(table_data.get(VALID_VOTING_BALLOTS));
+        row.total_yes = string_to_u32(table_data.get(TOTAL_YES));
+        row.ratio_yes = ratio_to_f32(table_data.get(RATIO_YES));
+        row.total_no = string_to_u32(table_data.get(TOTAL_NO));
+        row.ratio_no = ratio_to_f32(table_data.get(RATIO_NO));
+        row.cantons_voting_yes = integer_and_fraction_to_f32(table_data.get(CANTONS_VOTING_YES));
+        row.cantons_voting_yes = integer_and_fraction_to_f32(table_data.get(CANTONS_VOTING_NO));
+
+        data.update(row);
+    }
+    println!();
+    data
+}
+
+fn extract_parsed_html_from(url: &String) -> Html {
     let response = reqwest::blocking::get(url.clone());
     let html_content = response.unwrap().text().unwrap();
 
-    let document = Html::parse_document(&html_content);
-    document
+    Html::parse_document(&html_content)
 }
 
-pub fn extract_information_from_summary_page() -> HashMap<&'static str, Vec<String>> {
+fn extract_information_from_summary_page() -> HashMap<&'static str, Vec<String>> {
     let document = extract_parsed_html_from(&URL_SUMMARY_PAGE_IT.to_string());
 
     let row_selector = scraper::Selector::parse("tr").unwrap();
@@ -85,7 +140,7 @@ fn extract_title(url: &str) -> Vec<String> {
     titles
 }
 
-pub fn extract_number_votation_from_url(voting_hyperlink: &String) -> Option<u32> {
+fn extract_number_votation_from_url(voting_hyperlink: &String) -> Option<u32> {
     // Define the regex pattern to capture the number after "det"
     let re = Regex::new(r"det(\d+)\.html").unwrap();
 
@@ -98,7 +153,7 @@ pub fn extract_number_votation_from_url(voting_hyperlink: &String) -> Option<u32
     None
 }
 
-pub fn extract_typology_of_the_voting(title: String) -> String {
+fn extract_typology_of_the_voting(title: String) -> String {
     if title.contains("Iniziativa") {
         "initiative".to_string()
     } else if title.contains("Decreto") {
@@ -112,7 +167,7 @@ pub fn extract_typology_of_the_voting(title: String) -> String {
     }
 }
 
-pub fn extract_outcome(outcome: String) -> Option<String> {
+fn extract_outcome(outcome: String) -> Option<String> {
     match outcome.as_str() {
         "L'oggetto è stato accettato" => Some("accepted".to_string()),
         "L'oggetto è stato respinto" => Some("not accepted".to_string()),
@@ -120,22 +175,7 @@ pub fn extract_outcome(outcome: String) -> Option<String> {
     }
 }
 
-pub fn extract_date_of_voting_from_url(url: &str) -> Option<String> {
-    let re = Regex::new(r"/(\d{8})/").unwrap();
-    if let Some(captures) = re.captures(url) {
-        let number = &captures[1];
-        let formatted_date = format!(
-            "{}-{}-{}",
-            &number[0..4], // Year
-            &number[4..6], // Month
-            &number[6..8]  // Day
-        );
-        return Some(formatted_date);
-    }
-    None
-}
-
-pub fn extract_data_from_table(document: Html) -> HashMap<&'static str, String> {
+fn extract_data_from_table(document: Html) -> HashMap<&'static str, String> {
     // Selector for all td elements
     let td_selector = scraper::Selector::parse("td").unwrap();
 
@@ -212,10 +252,53 @@ pub fn extract_data_from_table(document: Html) -> HashMap<&'static str, String> 
         }
         position += 1;
     }
+
+    let selector = scraper::Selector::parse("a").unwrap();
+
+    // Find the link with the desired text
+    for element in document.select(&selector) {
+        if let Some(text) = element.text().next() {
+            if text.trim() == "Informazioni supplementari sull'iniziativa popolare" {
+                if let Some(href) = element.value().attr("href") {
+                    data.insert(
+                        "supplementary_information",
+                        format!("{}{}", "https://www.bk.admin.ch", href.to_string(),),
+                    );
+                    break;
+                }
+            }
+        }
+    }
     data
 }
 
-pub fn extract_domestic_voters(
+fn extract_recommendation(url: Option<&String>) -> Option<String> {
+    if url.is_none() {
+        return None;
+    }
+    let supplementary_info = extract_parsed_html_from(url.unwrap());
+    let td_selector = scraper::Selector::parse("td").unwrap();
+
+    // Iterate over all <td> elements to find the one containing "Raccomandazione"
+    for element in supplementary_info.select(&td_selector) {
+        let text = element
+            .text()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .trim()
+            .to_string();
+        if text.contains("Raccomandazione") {
+            if text.contains("Rigetto") {
+                return Some("reject".to_string());
+            } else {
+                return Some("accept".to_string());
+            }
+        }
+    }
+    None
+}
+
+fn extract_domestic_voters(
     total_voters: Option<u32>,
     overseas_voters: Option<u32>,
 ) -> Option<u32> {
