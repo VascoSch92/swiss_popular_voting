@@ -60,7 +60,7 @@ pub fn execute_extractions_of_data() -> Data {
         row.total_no = string_to_u32(table_data.get(TOTAL_NO));
         row.ratio_no = ratio_to_f32(table_data.get(RATIO_NO));
         row.cantons_voting_yes = integer_and_fraction_to_f32(table_data.get(CANTONS_VOTING_YES));
-        row.cantons_voting_yes = integer_and_fraction_to_f32(table_data.get(CANTONS_VOTING_NO));
+        row.cantons_voting_no = integer_and_fraction_to_f32(table_data.get(CANTONS_VOTING_NO));
 
         data.update(row);
     }
