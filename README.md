@@ -1,4 +1,4 @@
-# Swiss Populat Voting
+# Swiss Popular Voting
 
 Code to create the dataset `Swiss Popular Voting`.
 
@@ -15,6 +15,7 @@ If you would like to create the dataset locally, just install rust and run the c
 ```
 in the working directory of the project.
 
+You will find the dataset in your working directory under the name `data.csv`.
 ## What if I find an error?
 
 If you find an error in the dataset or/and you have suggestion how to make it better: please contact me :-)
